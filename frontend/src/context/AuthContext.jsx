@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+const API = import.meta.env.VITE_API_URL;
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -17,7 +19,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const response = await fetch('http://localhost:5002/auth/me', {
+      const response = await fetch(`${API}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -39,7 +41,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (email, password, name) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5002/auth/register', {
+      const response = await fetch(`${API}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, name })
@@ -63,7 +65,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5002/auth/login', {
+      const response = await fetch(`${API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -93,7 +95,7 @@ export const AuthProvider = ({ children }) => {
   const fetchAllUsers = async () => {
     if (!token) return;
     try {
-      const response = await fetch('http://localhost:5002/auth/users', {
+      const response = await fetch(`${API}/auth/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -113,7 +115,7 @@ export const AuthProvider = ({ children }) => {
   const updateUserRole = async (userId, role) => {
     if (!token) return { success: false, error: 'Not authenticated' };
     try {
-      const response = await fetch(`http://localhost:5002/auth/users/${userId}/role`, {
+      const response = await fetch(`${API}/auth/users/${userId}/role`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -136,7 +138,7 @@ export const AuthProvider = ({ children }) => {
   const deleteUser = async (userId) => {
     if (!token) return { success: false, error: 'Not authenticated' };
     try {
-      const response = await fetch(`http://localhost:5002/auth/users/${userId}`, {
+      const response = await fetch(`${API}/auth/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

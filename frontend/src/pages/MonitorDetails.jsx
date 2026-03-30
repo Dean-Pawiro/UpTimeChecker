@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+
+const API = import.meta.env.VITE_API_URL;
 import { useAuth } from '../context/AuthContext';
 import LeftNav from '../components/LeftNav';
 import './UptimeDark.css';
@@ -94,7 +96,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
         params.set('hours', String(requestedHours));
       }
 
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/logs?${params.toString()}`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/logs?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -121,7 +123,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
 
   const loadShares = async () => {
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/shares`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/shares`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -164,7 +166,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
 
     setError('');
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/logs`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/logs`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -183,7 +185,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
     setShareError('');
     setShareMessage('');
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/shares`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/shares`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -208,7 +210,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
     setShareError('');
     setShareMessage('');
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/shares/${shareId}`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/shares/${shareId}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -232,7 +234,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
     setShareError('');
     setShareMessage('');
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/shares/${shareId}`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/shares/${shareId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -257,7 +259,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
     }
 
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${monitorId}/alert-recipient`, {
+      const response = await fetch(`${API}/monitors/${monitorId}/alert-recipient`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,

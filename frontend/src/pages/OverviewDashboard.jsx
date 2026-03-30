@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+
+const API = import.meta.env.VITE_API_URL;
 import { useAuth } from '../context/AuthContext';
 import LeftNav from '../components/LeftNav';
 import './UptimeDark.css';
@@ -17,7 +19,7 @@ const OverviewDashboard = ({ onGoMonitors, onOpenMonitor, onGoUsers, onGoSetting
 
   const loadMonitors = async () => {
     try {
-      const response = await fetch('http://localhost:5002/monitors', {
+      const response = await fetch(`${API}/monitors`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();

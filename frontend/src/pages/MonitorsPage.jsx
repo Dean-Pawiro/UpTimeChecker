@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import LeftNav from '../components/LeftNav';
 import './UptimeDark.css';
 
+const API = import.meta.env.VITE_API_URL;
+
 const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEditTarget, onMonitorSaved, onGoUsers, onGoSettings }) => {
   const { user, token, logout } = useAuth();
   const [monitors, setMonitors] = useState([]);
@@ -16,7 +18,7 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
 
   const loadMonitors = async () => {
     try {
-      const response = await fetch('http://localhost:5002/monitors', {
+      const response = await fetch(`${API}/monitors`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await response.json();
@@ -78,7 +80,7 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
     e.preventDefault();
     setError('');
 
-    const endpoint = editingId ? `http://localhost:5002/monitors/${editingId}` : 'http://localhost:5002/monitors';
+    const endpoint = editingId ? `${API}/monitors/${editingId}` : `${API}/monitors`;
     const method = editingId ? 'PUT' : 'POST';
 
     try {
@@ -109,7 +111,7 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
   const deleteMonitor = async (id) => {
     setError('');
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${id}`, {
+      const response = await fetch(`${API}/monitors/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

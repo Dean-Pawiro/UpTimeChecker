@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+
+const API = import.meta.env.VITE_API_URL;
 import { useAuth } from '../context/AuthContext';
 import LeftNav from '../components/LeftNav';
 import './UptimeDark.css';
@@ -34,7 +36,7 @@ const SettingsPage = ({ onGoDashboard, onGoMonitors, onGoUsers }) => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('http://localhost:5002/settings/email', {
+      const response = await fetch(`${API}/settings/email`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -74,7 +76,7 @@ const SettingsPage = ({ onGoDashboard, onGoMonitors, onGoUsers }) => {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5002/settings/email', {
+      const response = await fetch(`${API}/settings/email`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -115,7 +117,7 @@ const SettingsPage = ({ onGoDashboard, onGoMonitors, onGoUsers }) => {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5002/settings/email/test', {
+      const response = await fetch(`${API}/settings/email/test`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

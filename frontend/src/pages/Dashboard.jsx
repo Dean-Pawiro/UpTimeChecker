@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+
+const API = import.meta.env.VITE_API_URL;
 import { useAuth } from '../context/AuthContext';
 import './Dashboard.css';
 
@@ -15,7 +17,7 @@ const Dashboard = ({ setCurrentPage }) => {
   const loadMonitors = async () => {
     setLoadingMonitors(true);
     try {
-      const response = await fetch('http://localhost:5002/monitors', {
+      const response = await fetch(`${API}/monitors`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -56,8 +58,8 @@ const Dashboard = ({ setCurrentPage }) => {
     };
 
     const endpoint = isEditing
-      ? `http://localhost:5002/monitors/${editingId}`
-      : 'http://localhost:5002/monitors';
+      ? `${API}/monitors/${editingId}`
+      : `${API}/monitors`;
 
     const method = isEditing ? 'PUT' : 'POST';
 
@@ -94,7 +96,7 @@ const Dashboard = ({ setCurrentPage }) => {
   const handleDelete = async (id) => {
     setError('');
     try {
-      const response = await fetch(`http://localhost:5002/monitors/${id}`, {
+      const response = await fetch(`${API}/monitors/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
