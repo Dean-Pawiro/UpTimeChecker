@@ -1,0 +1,9 @@
+#root {
+  width: 100%;
+  min-height: 100vh;
+  background: #070d19;
+}
+
+* {
+  box-sizing: border-box;
+}
