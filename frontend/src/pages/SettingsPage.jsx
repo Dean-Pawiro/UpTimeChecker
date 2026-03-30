@@ -11,6 +11,15 @@ const SettingsPage = ({ onGoDashboard, onGoMonitors, onGoUsers }) => {
   const [success, setSuccess] = useState('');
 
   const [smtpHost, setSmtpHost] = useState('');
+  // Dark mode state (local only, could be lifted to context for global)
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('darkMode') === 'true';
+  });
+
+  useEffect(() => {
+    document.body.classList.toggle('dark-mode', darkMode);
+    localStorage.setItem('darkMode', darkMode);
+  }, [darkMode]);
   const [smtpPort, setSmtpPort] = useState(587);
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPassword, setSmtpPassword] = useState('');
@@ -171,6 +180,22 @@ const SettingsPage = ({ onGoDashboard, onGoMonitors, onGoUsers }) => {
 
         {error && <div className="alert error">{error}</div>}
         {success && <div className="alert success">{success}</div>}
+
+
+        <section className="panel">
+          <div className="panel-head split" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2>Appearance</h2>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={darkMode}
+                onChange={e => setDarkMode(e.target.checked)}
+                style={{ accentColor: '#2b61ff', width: 18, height: 18 }}
+              />
+              <span style={{ color: '#b8caec', fontSize: 15 }}>Dark Mode</span>
+            </label>
+          </div>
+        </section>
 
         <section className="panel">
           <div className="panel-head">
