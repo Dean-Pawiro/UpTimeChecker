@@ -43,30 +43,50 @@ function parseAlertRecipientUserIds(rawValue, fallbackId = null) {
 
 async function checkMonitor(monitor) {
   const previousStatus = monitor.currentStatus;
-  const startedAt = Date.now();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
   let status = 'DOWN';
   let responseTimeMs = null;
   let error = null;
+  let lastError = null;
+  let lastResponseTime = null;
+  const maxRetries = 3;
 
-  try {
-    // Any HTTP response counts as UP for this phase; only transport/timeout errors are DOWN.
-    await fetch(monitor.url, {
-      method: 'GET',
-      redirect: 'follow',
-      signal: controller.signal,
-    });
-
-    status = 'UP';
-    responseTimeMs = Date.now() - startedAt;
-  } catch (err) {
-    status = 'DOWN';
-    responseTimeMs = null;
-    error = err?.name === 'AbortError' ? 'Request timeout' : (err?.message || 'Request failed');
-  } finally {
-    clearTimeout(timeoutId);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const startedAt = Date.now();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const res = await fetch(monitor.url, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        // HTTP error (e.g., 500, 404)
+        lastError = `HTTP ${res.status} ${res.statusText}`;
+        lastResponseTime = Date.now() - startedAt;
+        if (attempt === maxRetries) {
+          status = 'DOWN';
+          responseTimeMs = null;
+          error = lastError;
+        }
+        // retry if not last attempt
+      } else {
+        status = 'UP';
+        responseTimeMs = Date.now() - startedAt;
+        error = null;
+        break;
+      }
+    } catch (err) {
+      lastError = err?.name === 'AbortError' ? 'Request timeout' : (err?.message || 'Request failed');
+      lastResponseTime = null;
+      // Only set error if this is the last attempt
+      if (attempt === maxRetries) {
+        error = lastError;
+        responseTimeMs = null;
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   const checkedAt = new Date();
@@ -90,11 +110,25 @@ async function checkMonitor(monitor) {
   }
   await monitor.save();
 
-  const isStatusTransition =
+  let isStatusTransition =
     (previousStatus === 'UP' && status === 'DOWN') ||
     (previousStatus === 'DOWN' && status === 'UP');
 
-  if (isStatusTransition) {
+  // Grace period for DOWN: require 2 consecutive DOWNs before sending email
+  let allowSendDownEmail = true;
+  if (isStatusTransition && status === 'DOWN') {
+    // Get last 2 logs for this monitor (including this one)
+    const lastLogs = await MonitorCheckLog.findAll({
+      where: { monitorId: monitor.id },
+      order: [['checkedAt', 'DESC']],
+      limit: 2,
+    });
+    if (lastLogs.length < 2 || lastLogs.some(l => l.status !== 'DOWN')) {
+      allowSendDownEmail = false;
+    }
+  }
+
+  if (isStatusTransition && (status !== 'DOWN' || allowSendDownEmail)) {
     monitor.lastStatusChangeAt = checkedAt;
     monitor.lastStatusChangeFrom = previousStatus;
     monitor.lastStatusChangeTo = status;

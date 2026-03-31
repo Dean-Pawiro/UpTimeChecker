@@ -51,14 +51,34 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
     }
   }, [editMonitorId, monitors, clearEditTarget]);
 
+  const [sortField, setSortField] = useState('name');
+  const [sortOrder, setSortOrder] = useState('asc');
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return monitors;
-    return monitors.filter((m) => {
-      const displayName = (m.name || '').toLowerCase();
-      return displayName.includes(q) || m.url.toLowerCase().includes(q);
+    let result = monitors;
+    if (q) {
+      result = result.filter((m) => {
+        const displayName = (m.name || '').toLowerCase();
+        return displayName.includes(q) || m.url.toLowerCase().includes(q);
+      });
+    }
+    // Sorting
+    result = [...result].sort((a, b) => {
+      let aValue, bValue;
+      if (sortField === 'name') {
+        aValue = (a.name || '').toLowerCase();
+        bValue = (b.name || '').toLowerCase();
+      } else if (sortField === 'status') {
+        aValue = (a.currentStatus || '').toLowerCase();
+        bValue = (b.currentStatus || '').toLowerCase();
+      }
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
     });
-  }, [monitors, query]);
+    return result;
+  }, [monitors, query, sortField, sortOrder]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -194,9 +214,27 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
         </section>
 
         <section className="panel">
+
         <div className="panel-head split">
           <h2>Website List ({filtered.length})</h2>
-          <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or URL" />
+          <div className="sort-controls">
+            <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or URL" />
+            <label style={{ fontSize: 14 }}>
+              Sort by:
+              <select className="sort-select" value={sortField} onChange={e => setSortField(e.target.value)}>
+                <option value="name">Name</option>
+                <option value="status">Status</option>
+              </select>
+            </label>
+            <button
+              className="sort-btn"
+              type="button"
+              onClick={() => setSortOrder(o => (o === 'asc' ? 'desc' : 'asc'))}
+              title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+            >
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </button>
+          </div>
         </div>
 
         {filtered.length === 0 ? (
@@ -208,9 +246,22 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
                 <div className="monitor-row" key={monitor.id}>
                 <div className="monitor-main" onClick={() => onOpenMonitor(monitor.id)} role="button" tabIndex={0}>
                   <p className="monitor-title">{monitor.name || monitor.url}</p>
-                  <p className="monitor-meta">{monitor.url}</p>
+                  <p className="monitor-meta">
+                    <a
+                      href={monitor.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      style={{ color: '#6e95ff', textDecoration: 'underline', wordBreak: 'break-all' }}
+                    >
+                      {monitor.url}
+                    </a>
+                  </p>
                   <p className="monitor-meta">Every {monitor.intervalMinutes} min • Status: {monitor.currentStatus}</p>
-                  <p className="monitor-meta">Access: {monitor.accessRole || 'owner'}</p>
+                  {/* Removed access role display */}
+                  <p className="monitor-meta">
+                    Avg Response: {monitor.stats24h?.avgResponse != null ? `${monitor.stats24h.avgResponse} ms` : 'N/A'}
+                  </p>
                   <div className="mini-24h-wrap">
                     <div className="mini-24h-bars">
                       {(monitor.stats24h?.bars || []).map((status, index) => (

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import LeftNav from '../components/LeftNav';
 import './UptimeDark.css';
-import './UserManagement.css';
 
 const UserManagement = ({ onGoDashboard, onGoMonitors, onGoSettings }) => {
   const { user, users, fetchAllUsers, updateUserRole, deleteUser, loading, logout } = useAuth();

@@ -1,3 +1,285 @@
+body.dark-mode, .dark-bg, .user-management {
+  background: radial-gradient(circle at 15% 10%, #1a2743 0%, #0a1426 35%, #070d19 100%) !important;
+  color: #d8e4ff;
+}
+body.dark-mode .panel,
+body.dark-mode .users-table-container,
+body.dark-mode .calendar-modal,
+body.dark-mode .management-header,
+body.dark-mode .logs-table-wrap,
+body.dark-mode .response-graph-wrap {
+  background: rgba(14, 23, 42, 0.88) !important;
+  border-color: #27385d !important;
+  color: #eaf2ff !important;
+}
+body.dark-mode .btn,
+body.dark-mode .btn-back {
+  background: #1f3660;
+  color: #e8f0ff;
+}
+body.dark-mode .btn.primary {
+  background: #2b61ff;
+}
+body.dark-mode .btn.danger {
+  background: #8f2430;
+}
+body.dark-mode .btn.ghost {
+  background: transparent;
+  border-color: #314a77;
+}
+body.dark-mode .panel,
+body.dark-mode .users-table-container {
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+body.dark-mode .users-table th,
+body.dark-mode .users-table td {
+  color: #e9f2ff;
+}
+body.dark-mode .users-table tbody tr:hover {
+  background-color: #102043;
+}
+body.dark-mode .users-table tbody tr.current-user {
+  background-color: #122b59;
+}
+body.dark-mode .role-badge.role-admin {
+  background-color: #dc3545;
+  color: white;
+}
+body.dark-mode .role-badge.role-user {
+  background-color: #007bff;
+  color: white;
+}
+.user-management {
+  min-height: 100vh;
+  background: radial-gradient(circle at 15% 10%, #1a2743 0%, #0a1426 35%, #070d19 100%);
+  padding: 20px;
+}
+
+.management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  background: rgba(14, 23, 42, 0.88);
+  border: 1px solid #27385d;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.management-header h1 {
+  color: #f0f6ff;
+  font-size: 28px;
+  margin: 0;
+}
+
+.btn-back {
+  padding: 10px 20px;
+  background-color: #2b61ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s;
+}
+
+.btn-back:hover {
+  background-color: #2353dc;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 14px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8d7da;
+  border-radius: 4px;
+  border: 1px solid #f5c6cb;
+}
+
+.success-message {
+  color: #155724;
+  font-size: 14px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #d4edda;
+  border-radius: 4px;
+  border: 1px solid #c3e6cb;
+}
+
+.users-table-container {
+  background: rgba(14, 23, 42, 0.88);
+  border-radius: 12px;
+  border: 1px solid #27385d;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.users-table thead {
+  background-color: #0b1730;
+  border-bottom: 2px solid #243a61;
+}
+
+.users-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  color: #e9f2ff;
+}
+
+.users-table td {
+  padding: 15px;
+  border-bottom: 1px solid #243a61;
+  color: #b8caec;
+}
+
+.users-table tbody tr:hover {
+  background-color: #102043;
+}
+
+.users-table tbody tr.current-user {
+  background-color: #122b59;
+}
+
+.empty-message {
+  text-align: center;
+  color: #999;
+  padding: 40px 15px !important;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.role-badge.role-admin {
+  background-color: #dc3545;
+  color: white;
+}
+
+.role-badge.role-user {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Modern dark mode toggle switch */
+.toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  display: inline-block;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #22385f;
+  border-radius: 26px;
+  transition: background 0.2s;
+}
+.toggle-slider:before {
+  position: absolute;
+  content: '';
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background: #eaf2ff;
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+  box-shadow: 0 2px 8px #0004;
+}
+.toggle-switch input:checked + .toggle-slider {
+  background: #3adf90;
+}
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+  background: #22385f;
+}
+.calendar-modal-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 20, 38, 0.75);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-modal {
+  background: #0b1730;
+  border: 1px solid #243a61;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  padding: 32px 28px 22px 28px;
+  min-width: 340px;
+  max-width: 96vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: #eaf2ff;
+  position: relative;
+}
+.calendar-modal h3 {
+  margin-top: 0;
+  color: #3adf90;
+}
+.calendar-modal .close-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: #22385f;
+  color: #eaf2ff;
+  border: none;
+  border-radius: 6px;
+  font-size: 18px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.calendar-modal .close-btn:hover {
+  background: #3adf90;
+  color: #0b1730;
+}
+.calendar-modal table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 18px;
+}
+.calendar-modal th, .calendar-modal td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1d3154;
+  text-align: left;
+  font-size: 13px;
+}
+.calendar-modal th {
+  color: #b7caec;
+}
+.calendar-modal td {
+  color: #eaf2ff;
+}
+.calendar-cell.selected {
+  box-shadow: 0 0 0 2px #3adf90, 0 0 8px #3adf90;
+  border-color: #3adf90;
+}
 .dark-bg {
   min-height: 100vh;
   background: radial-gradient(circle at 15% 10%, #1a2743 0%, #0a1426 35%, #070d19 100%);
@@ -74,8 +356,9 @@
   flex: 1;
   width: 100%;
   min-width: 0;
-  padding-left: 32px;
-  padding-right: 32px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 24px;
 }
 
 .uptime-page {
@@ -267,6 +550,36 @@
 
 .search {
   min-width: 240px;
+  margin-right: 8px;
+}
+
+.sort-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sort-select {
+  border: 1px solid #324a77;
+  background: #0b1730;
+  color: #e6efff;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
+.sort-btn {
+  border: 1px solid #314a77;
+  background: #1f3660;
+  color: #e8f0ff;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.sort-btn:hover {
+  filter: brightness(1.12);
 }
 
 .monitor-table {

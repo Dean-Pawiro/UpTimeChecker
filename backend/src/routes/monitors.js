@@ -1,3 +1,4 @@
+
 import express from 'express';
 import { Op } from 'sequelize';
 import { authMiddleware } from '../middleware/auth.js';
@@ -8,63 +9,31 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
-function normalizeUrl(inputUrl) {
-  const value = String(inputUrl || '').trim();
-  if (!value) return null;
-
-  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-  try {
-    const parsed = new URL(withProtocol);
-    return parsed.toString();
-  } catch (_error) {
-    return null;
-  }
-}
-
-function deriveNameFromUrl(normalizedUrl) {
-  try {
-    const parsed = new URL(normalizedUrl);
-    return parsed.hostname.replace(/^www\./i, '');
-  } catch (_error) {
-    return normalizedUrl;
-  }
-}
-
-function normalizeName(inputName, normalizedUrl) {
-  const value = String(inputName || '').trim();
-  if (value) return value;
-  return deriveNameFromUrl(normalizedUrl);
-}
-
+// --- Backend implementation of build24hBars and summarizeLogs ---
 function build24hBars(logs) {
   const now = Date.now();
   const bucketCount = 48;
   const bucketSizeMs = 30 * 60 * 1000;
   const startMs = now - (bucketCount * bucketSizeMs);
 
-  const latestPerBucket = new Array(bucketCount).fill(null);
-
+  // Collect all logs per bucket
+  const buckets = Array.from({ length: bucketCount }, () => []);
   for (const log of logs) {
     const checkedMs = new Date(log.checkedAt).getTime();
-    if (checkedMs < startMs || checkedMs > now) {
-      continue;
-    }
-
+    if (checkedMs < startMs || checkedMs > now) continue;
     const index = Math.floor((checkedMs - startMs) / bucketSizeMs);
-    if (index < 0 || index >= bucketCount) {
-      continue;
-    }
-
-    const current = latestPerBucket[index];
-    if (!current || new Date(log.checkedAt).getTime() > new Date(current.checkedAt).getTime()) {
-      latestPerBucket[index] = log;
-    }
+    if (index < 0 || index >= bucketCount) continue;
+    buckets[index].push(log);
   }
 
-  return latestPerBucket.map((entry) => {
-    if (!entry) return null;
-    return entry.status === 'UP' ? 'UP' : 'DOWN';
+  // For each bucket, if any log is DOWN, mark as DOWN, else UP if any log, else null
+  const bars = buckets.map(bucket => {
+    if (bucket.length === 0) return null;
+    return bucket.some(log => log.status === 'DOWN') ? 'DOWN' : 'UP';
   });
+
+  // Also return logs per bucket for modal
+  return { bars, buckets };
 }
 
 function summarizeLogs(logs) {
@@ -97,6 +66,28 @@ function summarizeLogs(logs) {
     upDurationMs,
     downDurationMs,
   };
+}
+
+function normalizeUrl(inputUrl) {
+  const value = String(inputUrl || '').trim();
+  if (!value) return null;
+
+  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+  try {
+    const parsed = new URL(withProtocol);
+    return parsed.toString();
+  } catch (_error) {
+    return null;
+  }
+}
+
+function deriveNameFromUrl(normalizedUrl) {
+  try {
+    const parsed = new URL(normalizedUrl);
+    return parsed.hostname.replace(/^www\./i, '');
+  } catch (_error) {
+    return normalizedUrl;
+  }
 }
 
 function parseAlertRecipientUserIds(rawValue, fallbackId = null) {
@@ -281,6 +272,15 @@ router.get('/', authMiddleware, async (req, res) => {
 
     const responseMonitors = monitors.map((entry) => {
       const monitorLogs = logsByMonitorId.get(entry.monitor.id) || [];
+      // Calculate average response time for last 24h logs
+      let avgResponse = null;
+      if (monitorLogs.length > 0) {
+        const valid = monitorLogs.map(l => l.responseTimeMs).filter(v => typeof v === 'number' && v >= 0);
+        if (valid.length > 0) {
+          avgResponse = Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+        }
+      }
+      const barResult = build24hBars(monitorLogs);
       return {
         ...entry.monitor.toJSON(),
         accessRole: entry.accessRole,
@@ -289,7 +289,9 @@ router.get('/', authMiddleware, async (req, res) => {
         canManageShares: entry.canManageShares,
         stats24h: {
           ...summarizeLogs(monitorLogs),
-          bars: build24hBars(monitorLogs),
+          bars: barResult.bars,
+          barBuckets: barResult.buckets,
+          avgResponse,
         },
       };
     });
@@ -329,7 +331,7 @@ router.get('/:id/logs', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Monitor not found' });
     }
 
-    const { monitor } = access;
+    const monitorObj = access.monitor;
 
     let since = new Date(Date.now() - (lookbackHours * 60 * 60 * 1000));
     let until = new Date();
@@ -356,94 +358,49 @@ router.get('/:id/logs', authMiddleware, async (req, res) => {
       }
     }
 
-    const logs = await MonitorCheckLog.findAll({
-      where: {
-        monitorId: monitor.id,
-        checkedAt: {
-          [Op.gte]: since,
-          [Op.lte]: until,
-        },
+    // Support barBucketIndex for logs in a specific 30-min bar
+    const barBucketIndex = req.query.barBucketIndex !== undefined ? Number(req.query.barBucketIndex) : null;
+    let logsWhere = {
+      monitorId: monitorObj.id,
+      checkedAt: {
+        [Op.gte]: since,
+        [Op.lte]: until,
       },
+    };
+    let bucketRange = null;
+    if (barBucketIndex !== null && !Number.isNaN(barBucketIndex)) {
+      // Calculate bucket time range
+      const now = Date.now();
+      const bucketCount = 48;
+      const bucketSizeMs = 30 * 60 * 1000;
+      const startMs = now - (bucketCount * bucketSizeMs);
+      const bucketStart = new Date(startMs + barBucketIndex * bucketSizeMs);
+      const bucketEnd = new Date(startMs + (barBucketIndex + 1) * bucketSizeMs - 1);
+      logsWhere.checkedAt = {
+        [Op.gte]: bucketStart,
+        [Op.lte]: bucketEnd,
+      };
+      bucketRange = { start: bucketStart, end: bucketEnd };
+    }
+    const logs = await MonitorCheckLog.findAll({
+      where: logsWhere,
       order: [['checkedAt', 'DESC']],
-      limit: 1000,
     });
+    // (removed accidental router.get definition inside another function)
+    // (removed misplaced return statement)
 
+    // Always return monitor details, summary, bars24h, logs
+    const summary = summarizeLogs(logs);
+    const barResult = build24hBars(logs);
+    const bars24h = barResult.bars;
     res.json({
-      monitor: withAccess(monitor, access),
-      summary: summarizeLogs(logs),
-      bars24h: build24hBars(logs),
+      monitor: withAccess(monitorObj, access),
+      summary,
+      bars24h,
       logs,
+      barBucketIndex,
+      bucketRange,
     });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE /monitors/:id/logs
-router.delete('/:id/logs', authMiddleware, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const access = await getMonitorAccess(id, req.user.userId);
-    if (!access) {
-      return res.status(404).json({ error: 'Monitor not found' });
-    }
-
-    if (!access.canEdit) {
-      return res.status(403).json({ error: 'You need admin access on this monitor to clear logs' });
-    }
-
-    const deletedCount = await MonitorCheckLog.destroy({
-      where: { monitorId: access.monitor.id },
-    });
-
-    access.monitor.currentStatus = 'UNKNOWN';
-    access.monitor.currentStatusSinceAt = null;
-    access.monitor.lastCheckedAt = null;
-    access.monitor.lastResponseTimeMs = null;
-    access.monitor.lastError = null;
-    access.monitor.lastStatusChangeAt = null;
-    access.monitor.lastStatusChangeFrom = null;
-    access.monitor.lastStatusChangeTo = null;
-    access.monitor.lastAlertSentAt = null;
-    access.monitor.lastAlertStatus = null;
-    access.monitor.lastAlertError = null;
-    await access.monitor.save();
-
-    res.json({
-      message: `Cleared ${deletedCount} log entries`,
-      monitor: withAccess(access.monitor, access),
-      deletedCount,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// POST /monitors
-router.post('/', authMiddleware, async (req, res) => {
-  try {
-    const { url, name, intervalMinutes } = req.body;
-    const normalizedUrl = normalizeUrl(url);
-    const parsedInterval = Number(intervalMinutes);
-
-    if (!normalizedUrl) {
-      return res.status(400).json({ error: 'A valid URL is required' });
-    }
-
-    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 1440) {
-      return res.status(400).json({ error: 'Interval must be an integer between 1 and 1440 minutes' });
-    }
-
-    const monitor = await Monitor.create({
-      userId: req.user.userId,
-      url: normalizedUrl,
-      name: normalizeName(name, normalizedUrl),
-      alertRecipientUserId: req.user.userId,
-      alertRecipientUserIds: JSON.stringify([req.user.userId]),
-      intervalMinutes: parsedInterval,
-    });
-
-    res.status(201).json({ monitor });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

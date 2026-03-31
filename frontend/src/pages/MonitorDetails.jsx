@@ -80,6 +80,16 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
   const [shareMessage, setShareMessage] = useState('');
   const [shareError, setShareError] = useState('');
   const [alertRecipientUserIds, setAlertRecipientUserIds] = useState([]);
+  // Fix: add selectedDay state for calendar modal
+  const [selectedDay, setSelectedDay] = useState(null);
+  // Pagination for Monitor Logs
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  // New: state for selected bar (24h timeline)
+  const [selectedBarIndex, setSelectedBarIndex] = useState(null);
+  const [barLogs, setBarLogs] = useState([]);
+  const [barLogsLoading, setBarLogsLoading] = useState(false);
+  const [barLogsError, setBarLogsError] = useState('');
 
   const loadMonitor = async (range = null) => {
     try {
@@ -150,6 +160,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
 
   const applyDateFilter = () => {
     setError('');
+    setCurrentPage(1);
     loadMonitor({ fromDate, toDate });
   };
 
@@ -157,6 +168,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
     setError('');
     setFromDate('');
     setToDate('');
+    setCurrentPage(1);
     loadMonitor();
   };
 
@@ -471,9 +483,71 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
             <h2>Response Timeline (Last 24h)</h2>
             <div className="timeline-bars">
               {bars.map((status, index) => (
-                <span key={`${monitor.id}-bar-${index}`} className={`bar ${status === 'UP' ? 'up' : status === 'DOWN' ? 'down' : 'none'}`} />
+                <span
+                  key={`${monitor.id}-bar-${index}`}
+                  className={`bar ${status === 'UP' ? 'up' : status === 'DOWN' ? 'down' : 'none'}`}
+                  style={{ cursor: 'pointer' }}
+                  title={`Show logs for ${(index * 0.5).toFixed(1)}-${((index + 1) * 0.5).toFixed(1)}h ago`}
+                  onClick={async () => {
+                    setSelectedBarIndex(index);
+                    setBarLogs([]);
+                    setBarLogsError('');
+                    setBarLogsLoading(true);
+                    try {
+                      const response = await fetch(`${API}/monitors/${monitorId}/logs?barBucketIndex=${index}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setBarLogs(data.logs || []);
+                      } else {
+                        setBarLogsError(data.error || 'Failed to load logs for this period');
+                      }
+                    } catch (err) {
+                      setBarLogsError('Failed to load logs for this period');
+                    }
+                    setBarLogsLoading(false);
+                  }}
+                />
               ))}
             </div>
+                      {/* Modal for selected 24h bar logs */}
+                      {selectedBarIndex !== null && (
+                        <div className="calendar-modal-bg" onClick={() => setSelectedBarIndex(null)}>
+                          <div className="calendar-modal" onClick={e => e.stopPropagation()}>
+                            <button className="close-btn" onClick={() => setSelectedBarIndex(null)}>&times;</button>
+                            <h3>Logs for {(selectedBarIndex * 0.5).toFixed(1)} - {((selectedBarIndex + 1) * 0.5).toFixed(1)} hours ago</h3>
+                            {barLogsLoading ? (
+                              <p className="subtext">Loading logs...</p>
+                            ) : barLogsError ? (
+                              <div className="alert error">{barLogsError}</div>
+                            ) : barLogs.length === 0 ? (
+                              <p className="subtext">No logs for this period.</p>
+                            ) : (
+                              <table>
+                                <thead>
+                                  <tr>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                    <th>Response (ms)</th>
+                                    <th>Error</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {barLogs.map(log => (
+                                    <tr key={log.id}>
+                                      <td>{new Date(log.checkedAt).toLocaleTimeString()}</td>
+                                      <td><span className={`log-badge ${log.status === 'UP' ? 'up' : 'down'}`}>{log.status}</span></td>
+                                      <td>{log.responseTimeMs ?? '-'}</td>
+                                      <td>{log.error || '-'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </div>
+                      )}
             <p className="subtext">Green = up, red = down</p>
           </section>
 
@@ -542,7 +616,7 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
             </div>
 
             <div className="calendar-months-grid">
-              {monthCalendars.map((monthCalendar) => (
+              {monthCalendars.map((monthCalendar, mIdx) => (
                 <div className="calendar-month-panel" key={monthCalendar.monthLabel}>
                   <p className="subtext calendar-month-title">{monthCalendar.monthLabel}</p>
                   <div className="calendar-grid">
@@ -550,9 +624,20 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
                       if (cell.type === 'empty') {
                         return <div key={cell.key} className="calendar-cell empty" />;
                       }
-
+                      const isSelected = selectedDay && selectedDay.year === (mIdx === 0 ? new Date().getFullYear() : new Date().getFullYear()) && selectedDay.month === monthCalendar.cells[cell.day-1]?.month && selectedDay.day === cell.day;
                       return (
-                        <div key={cell.key} className={`calendar-cell ${cell.status}`} title={`Day ${cell.day}: ${cell.status}`}>
+                        <div
+                          key={cell.key}
+                          className={`calendar-cell ${cell.status}${selectedDay && selectedDay.year === (mIdx === 0 ? new Date().getFullYear() : new Date().getFullYear()) && selectedDay.month === (mIdx === 0 ? new Date().getMonth() - 1 : new Date().getMonth()) && selectedDay.day === cell.day ? ' selected' : ''}`}
+                          title={`Day ${cell.day}: ${cell.status}`}
+                          style={{ cursor: cell.status !== 'no-data' ? 'pointer' : 'default' }}
+                          onClick={() => {
+                            if (cell.status === 'no-data') return;
+                            const year = mIdx === 0 ? new Date().getFullYear() : new Date().getFullYear();
+                            const month = mIdx === 0 ? new Date().getMonth() - 1 : new Date().getMonth();
+                            setSelectedDay({ year, month, day: cell.day });
+                          }}
+                        >
                           {cell.day}
                         </div>
                       );
@@ -561,6 +646,43 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
                 </div>
               ))}
             </div>
+
+            {/* Modal for selected day logs */}
+            {selectedDay && (
+              <div className="calendar-modal-bg" onClick={() => setSelectedDay(null)}>
+                <div className="calendar-modal" onClick={e => e.stopPropagation()}>
+                  <button className="close-btn" onClick={() => setSelectedDay(null)}>&times;</button>
+                  <h3>Logs for {selectedDay.year}-{String(selectedDay.month + 1).padStart(2, '0')}-{String(selectedDay.day).padStart(2, '0')}</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Response (ms)</th>
+                        <th>Error</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.filter(log => {
+                        const d = new Date(log.checkedAt);
+                        return d.getFullYear() === selectedDay.year && d.getMonth() === selectedDay.month && d.getDate() === selectedDay.day;
+                      }).map(log => (
+                        <tr key={log.id}>
+                          <td>{new Date(log.checkedAt).toLocaleTimeString()}</td>
+                          <td><span className={`log-badge ${log.status === 'UP' ? 'up' : 'down'}`}>{log.status}</span></td>
+                          <td>{log.responseTimeMs ?? '-'}</td>
+                          <td>{log.error || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {logs.filter(log => {
+                    const d = new Date(log.checkedAt);
+                    return d.getFullYear() === selectedDay.year && d.getMonth() === selectedDay.month && d.getDate() === selectedDay.day;
+                  }).length === 0 && <p className="subtext">No logs for this day.</p>}
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="panel">
@@ -599,17 +721,56 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
                     </tr>
                   </thead>
                   <tbody>
-                    {logs.map((log) => (
-                      <tr key={log.id}>
-                        <td>{new Date(log.checkedAt).toLocaleString()}</td>
-                        <td>
-                          <span className={`log-badge ${log.status === 'UP' ? 'up' : 'down'}`}>{log.status}</span>
-                        </td>
-                        <td>{log.error || '-'}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const indexOfLastItem = currentPage * itemsPerPage;
+                      const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+                      const currentLogs = logs.slice(indexOfFirstItem, indexOfLastItem);
+                      return currentLogs.map((log) => (
+                        <tr key={log.id}>
+                          <td>{new Date(log.checkedAt).toLocaleString()}</td>
+                          <td>
+                            <span className={`log-badge ${log.status === 'UP' ? 'up' : 'down'}`}>{log.status}</span>
+                          </td>
+                          <td>{log.error || '-'}</td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
+                {/* Pagination Controls */}
+                {logs.length > itemsPerPage && (
+                  <div className="pagination" style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      className="btn ghost"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((prev) => prev - 1)}
+                    >
+                      Prev
+                    </button>
+                    <span>Page {currentPage} of {Math.ceil(logs.length / itemsPerPage)}</span>
+                    <button
+                      className="btn ghost"
+                      disabled={currentPage === Math.ceil(logs.length / itemsPerPage)}
+                      onClick={() => setCurrentPage((prev) => prev + 1)}
+                    >
+                      Next
+                    </button>
+                    {/* Optional: clickable page numbers */}
+                    <span style={{ display: 'flex', gap: 2 }}>
+                      {Array.from({ length: Math.ceil(logs.length / itemsPerPage) }, (_, i) => (
+                        <button
+                          key={i}
+                          className={currentPage === i + 1 ? 'btn active' : 'btn ghost'}
+                          style={{ minWidth: 28, padding: '2px 6px', fontWeight: currentPage === i + 1 ? 'bold' : undefined }}
+                          onClick={() => setCurrentPage(i + 1)}
+                          disabled={currentPage === i + 1}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </section>

@@ -88,13 +88,15 @@ const OverviewDashboard = ({ onGoMonitors, onOpenMonitor, onGoUsers, onGoSetting
 
   // Notification handlers
   const handleNotifClick = (notif) => {
-    setNotifOpen(false);
     setNotifications(prev => {
-      const next = prev.filter(n => n.monitorId !== notif.monitorId);
+      const next = prev.filter(n => n.id !== notif.id);
       localStorage.setItem('notifications', JSON.stringify(next));
       return next;
     });
-    onOpenMonitor(notif.monitorId);
+    setTimeout(() => {
+      setNotifOpen(false);
+      onOpenMonitor(notif.monitorId);
+    }, 0);
   };
   const handleClearAll = () => {
     setNotifications([]);
