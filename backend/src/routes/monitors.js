@@ -3,9 +3,11 @@ import express from 'express';
 import { Op } from 'sequelize';
 import { authMiddleware } from '../middleware/auth.js';
 import Monitor from '../models/Monitor.js';
+
 import MonitorCheckLog from '../models/MonitorCheckLog.js';
 import MonitorShare from '../models/MonitorShare.js';
 import User from '../models/User.js';
+import ContactInfo from '../models/ContactInfo.js';
 
 const router = express.Router();
 
@@ -88,6 +90,14 @@ function deriveNameFromUrl(normalizedUrl) {
   } catch (_error) {
     return normalizedUrl;
   }
+}
+
+function normalizeName(proposedName, url) {
+  const nameStr = proposedName === undefined || proposedName === null
+    ? ''
+    : String(proposedName).trim();
+  if (nameStr) return nameStr;
+  return deriveNameFromUrl(url);
 }
 
 function parseAlertRecipientUserIds(rawValue, fallbackId = null) {
@@ -302,6 +312,46 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /monitors - create a new monitor
+router.post('/', authMiddleware, async (req, res) => {
+  try {
+    const { url, name, intervalMinutes, contactName, contactEmail } = req.body;
+    const normalizedUrl = normalizeUrl(url);
+    if (!normalizedUrl) {
+      return res.status(400).json({ error: 'A valid URL is required' });
+    }
+
+    const parsedInterval = Number(intervalMinutes || 5);
+    if (!Number.isInteger(parsedInterval) || parsedInterval < 1 || parsedInterval > 1440) {
+      return res.status(400).json({ error: 'Interval must be an integer between 1 and 1440 minutes' });
+    }
+
+    const monitor = await Monitor.create({
+      userId: req.user.userId,
+      url: normalizedUrl,
+      name: normalizeName(name, normalizedUrl),
+      intervalMinutes: parsedInterval,
+      currentStatus: 'UNKNOWN',
+    });
+
+    if (contactName && contactEmail) {
+      await ContactInfo.upsert({ monitorId: monitor.id, name: contactName, email: contactEmail });
+    }
+
+    const access = {
+      monitor,
+      accessRole: 'owner',
+      canEdit: true,
+      canDelete: true,
+      canManageShares: true,
+    };
+
+    res.status(201).json({ monitor: withAccess(monitor, access) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /monitors/:id
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
@@ -410,7 +460,7 @@ router.get('/:id/logs', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { url, name, intervalMinutes } = req.body;
+    const { url, name, intervalMinutes, contactName, contactEmail } = req.body;
 
     const access = await getMonitorAccess(id, req.user.userId);
     if (!access) {
@@ -447,6 +497,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 
     await monitor.save();
+
+    // Handle contact info update (optional)
+    if ((contactName && contactEmail) || contactName === '' || contactEmail === '') {
+      // If both provided and non-empty, upsert; if either is empty string, remove contact info
+      if (contactName && contactEmail) {
+        await ContactInfo.upsert({ monitorId: monitor.id, name: contactName, email: contactEmail });
+      } else {
+        await ContactInfo.destroy({ where: { monitorId: monitor.id } });
+      }
+    }
 
     res.json({ monitor: withAccess(monitor, access) });
   } catch (error) {

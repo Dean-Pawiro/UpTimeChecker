@@ -6,6 +6,8 @@ import sequelize from './config/database.js';
 import authRoutes from './routes/auth.js';
 import monitorRoutes from './routes/monitors.js';
 import settingsRoutes from './routes/settings.js';
+import contactInfoRoutes from './routes/contactInfo.js';
+import serviceRoutes from './routes/service.js';
 import './models/MonitorCheckLog.js';
 import './models/EmailSettings.js';
 import './models/MonitorShare.js';
@@ -24,6 +26,8 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/monitors', monitorRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/contact-info', contactInfoRoutes);
+app.use('/service', serviceRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -161,7 +165,11 @@ async function startServer() {
 
     app.listen(PORT, () => {
       console.log(`✓ Server running on http://localhost:${PORT}`);
-      startMonitoringWorker();
+      if (process.env.EXTERNAL_CRON === 'true') {
+        console.log('i) External cron mode enabled; internal monitoring worker disabled');
+      } else {
+        startMonitoringWorker();
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);
