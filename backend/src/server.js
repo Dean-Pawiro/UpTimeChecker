@@ -49,7 +49,14 @@ async function startServer() {
     console.log('✓ Database models synchronized');
 
     const queryInterface = sequelize.getQueryInterface();
-    const monitorTable = await queryInterface.describeTable('monitors');
+    let monitorTable = {};
+    try {
+      monitorTable = await queryInterface.describeTable('monitors');
+    } catch (e) {
+      console.warn('Could not describe table "monitors" during startup:', e.message || e);
+      // Proceed — sequelize.sync earlier should have created tables where possible.
+      monitorTable = {};
+    }
     if (!monitorTable.name) {
       await queryInterface.addColumn('monitors', 'name', {
         type: DataTypes.STRING(255),

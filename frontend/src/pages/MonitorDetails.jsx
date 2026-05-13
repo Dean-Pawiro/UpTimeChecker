@@ -1,6 +1,149 @@
+
 import React, { useEffect, useMemo, useState } from 'react';
 
+
+
+// ContactInfoDisplay: read-only view
+function ContactInfoDisplay({ monitorId, token }) {
+  const [contact, setContact] = useState({ name: '', email: '' });
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const fetchContact = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API}/contact-info/${monitorId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setContact({ name: data.name || '', email: data.email || '' });
+        } else {
+          setContact({ name: '', email: '' });
+        }
+      } catch (err) {
+        setContact({ name: '', email: '' });
+      }
+      setLoading(false);
+    };
+    if (monitorId && token) fetchContact();
+  }, [monitorId, token]);
+  if (loading) return <p className="subtext">Loading...</p>;
+  if (!contact.name && !contact.email) return <p className="subtext">No contact info set.</p>;
+  return (
+    <div className="contact-info-display" style={{ maxWidth: 400 }}>
+      <div className="form-row">
+        <label>Name</label>
+        <div>{contact.name || <span className="subtext">-</span>}</div>
+      </div>
+      <div className="form-row">
+        <label>Email</label>
+        <div>{contact.email || <span className="subtext">-</span>}</div>
+      </div>
+    </div>
+  );
+}
+
+// ContactInfoForm: edit mode only
+function ContactInfoForm({ monitorId, token, onSaved }) {
+  const [contact, setContact] = useState({ name: '', email: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const fetchContact = async () => {
+      setLoading(true);
+      setError('');
+      setSuccess('');
+      try {
+        const res = await fetch(`${API}/contact-info/${monitorId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setContact({ name: data.name || '', email: data.email || '' });
+        } else {
+          setContact({ name: '', email: '' });
+        }
+      } catch (err) {
+        setError('Failed to load contact info');
+      }
+      setLoading(false);
+    };
+    if (monitorId && token) fetchContact();
+  }, [monitorId, token]);
+
+  const handleChange = (e) => {
+    setContact({ ...contact, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    try {
+      const res = await fetch(`${API}/contact-info/${monitorId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(contact),
+      });
+      if (res.ok) {
+        setSuccess('Contact info saved');
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to save contact info');
+      }
+    } catch (err) {
+      setError('Failed to save contact info');
+    }
+  };
+
+  return (
+    <form className="contact-info-form" onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
+      {loading ? (
+        <p className="subtext">Loading...</p>
+      ) : (
+        <>
+          {error && <div className="alert error">{error}</div>}
+          {success && <div className="alert success">{success}</div>}
+          <div className="form-row">
+            <label htmlFor="contactName">Name</label>
+            <input
+              id="contactName"
+              name="name"
+              type="text"
+              value={contact.name}
+              onChange={handleChange}
+              placeholder="Contact Name"
+              required
+            />
+          </div>
+          <div className="form-row">
+            <label htmlFor="contactEmail">Email</label>
+            <input
+              id="contactEmail"
+              name="email"
+              type="email"
+              value={contact.email}
+              onChange={handleChange}
+              placeholder="Contact Email"
+              required
+            />
+          </div>
+          <div className="monitor-actions">
+            <button type="submit" className="btn primary">Save Contact Info</button>
+          </div>
+        </>
+      )}
+    </form>
+  );
+}
+
 const API = import.meta.env.VITE_API_URL;
+
 import { useAuth } from '../context/AuthContext';
 import LeftNav from '../components/LeftNav';
 import './UptimeDark.css';
@@ -65,6 +208,7 @@ const formatDuration = (ms) => {
 };
 
 const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMonitor, onGoUsers, onGoSettings }) => {
+  const [editContactInfo, setEditContactInfo] = useState(false);
   const { token, logout, user } = useAuth();
   const [monitor, setMonitor] = useState(null);
   const [summary, setSummary] = useState({ availability: 0, upCount: 0, downCount: 0 });
@@ -432,18 +576,39 @@ const MonitorDetails = ({ monitorId, onBackMonitors, onBackDashboard, onEditMoni
 
         {monitor && (
           <>
+          {/* Contact Info Section */}
+
+          <section className="panel">
+            <div className="panel-head split">
+              <h2>Contact Info</h2>
+              {monitor.canEdit && !editContactInfo && (
+                <button className="btn primary" onClick={() => setEditContactInfo(true)}>Edit</button>
+              )}
+            </div>
+            {editContactInfo && monitor.canEdit ? (
+              <ContactInfoForm monitorId={monitor.id} token={token} onSaved={() => setEditContactInfo(false)} />
+            ) : (
+              <ContactInfoDisplay monitorId={monitor.id} token={token} />
+            )}
+          </section>
+
           <section className="panel">
             <div className="panel-head split">
               <div>
                 <h2>{monitor.name || monitor.url}</h2>
-                <p className="subtext">{monitor.url}</p>
-                <p className="subtext">Interval: every {monitor.intervalMinutes} minute(s)</p>
-                <p className="subtext">Access role: {monitor.accessRole || 'owner'}</p>
+                <div className="monitor-status-1 ">
+                  <p className="subtext">{monitor.url}</p>
+                  <p className="subtext">Interval: every {monitor.intervalMinutes} minute(s)</p>
+                  <p className="subtext">Access role: {monitor.accessRole || 'owner'}</p>
+                </div>
+                <div className="monitor-status-2">
+                  
               </div>
               {monitor.canEdit && (
                 <button className="btn primary" onClick={() => onEditMonitor(monitor.id)}>Edit Monitor</button>
               )}
             </div>
+          </div>
           </section>
 
           <section className="stats-grid">

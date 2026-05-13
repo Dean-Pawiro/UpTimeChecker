@@ -8,6 +8,7 @@ const LeftNav = ({
   onGoMonitors,
   onGoUsers,
   onGoSettings,
+  onGoService,
 }) => {
   return (
     <aside className="left-nav">
@@ -40,6 +41,13 @@ const LeftNav = ({
             Users
           </button>
         )}
+        <button
+          type="button"
+          className={`nav-link ${current === 'service' ? 'active' : ''}`}
+          onClick={onGoService}
+        >
+          Service
+        </button>
         {showSettings && (
           <button
             type="button"

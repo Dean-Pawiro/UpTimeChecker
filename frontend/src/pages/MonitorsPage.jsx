@@ -15,6 +15,8 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
 
   const loadMonitors = async () => {
     try {
@@ -85,6 +87,8 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
     setName('');
     setUrl('');
     setIntervalMinutes(5);
+    setContactName('');
+    setContactEmail('');
     setShowForm(false);
   };
 
@@ -93,6 +97,8 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
     setName('');
     setUrl('');
     setIntervalMinutes(5);
+    setContactName('');
+    setContactEmail('');
     setShowForm(true);
   };
 
@@ -103,6 +109,14 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
     const endpoint = editingId ? `${API}/monitors/${editingId}` : `${API}/monitors`;
     const method = editingId ? 'PUT' : 'POST';
 
+    const body = {
+      name,
+      url,
+      intervalMinutes: Number(intervalMinutes),
+      contactName: contactName.trim() || undefined,
+      contactEmail: contactEmail.trim() || undefined,
+    };
+
     try {
       const response = await fetch(endpoint, {
         method,
@@ -110,7 +124,7 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, url, intervalMinutes: Number(intervalMinutes) }),
+        body: JSON.stringify(body),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -203,6 +217,14 @@ const MonitorsPage = ({ onBackDashboard, onOpenMonitor, editMonitorId, clearEdit
               <option value={720}>12 hours</option>
               <option value={1440}>24 hours</option>
             </select>
+          </div>
+          <div className="form-row">
+            <label htmlFor="contactName">Contact Name (optional)</label>
+            <input id="contactName" type="text" value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Client Name" />
+          </div>
+          <div className="form-row">
+            <label htmlFor="contactEmail">Contact Email (optional)</label>
+            <input id="contactEmail" type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="client@email.com" />
           </div>
           {error && <div className="alert error">{error}</div>}
           <div className="monitor-actions">

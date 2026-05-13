@@ -6,6 +6,7 @@ import MonitorsPage from './pages/MonitorsPage';
 import MonitorDetails from './pages/MonitorDetails';
 import UserManagement from './pages/UserManagement';
 import SettingsPage from './pages/SettingsPage';
+import ServicePage from './pages/ServicePage';
 import './App.css';
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
           onOpenMonitor={openMonitorDetails}
           onGoUsers={() => setCurrentPage('users')}
           onGoSettings={() => setCurrentPage('settings')}
+          onGoService={() => setCurrentPage('service')}
         />
       )}
 
@@ -61,6 +63,7 @@ function App() {
           onMonitorSaved={handleMonitorSaved}
           onGoUsers={() => setCurrentPage('users')}
           onGoSettings={() => setCurrentPage('settings')}
+          onGoService={() => setCurrentPage('service')}
         />
       )}
 
@@ -72,6 +75,7 @@ function App() {
           onEditMonitor={openMonitorEdit}
           onGoUsers={() => setCurrentPage('users')}
           onGoSettings={() => setCurrentPage('settings')}
+          onGoService={() => setCurrentPage('service')}
         />
       )}
 
@@ -80,6 +84,7 @@ function App() {
           onGoDashboard={() => setCurrentPage('dashboard-overview')}
           onGoMonitors={() => setCurrentPage('monitors')}
           onGoSettings={() => setCurrentPage('settings')}
+          onGoService={() => setCurrentPage('service')}
         />
       )}
 
@@ -88,7 +93,12 @@ function App() {
           onGoDashboard={() => setCurrentPage('dashboard-overview')}
           onGoMonitors={() => setCurrentPage('monitors')}
           onGoUsers={() => setCurrentPage('users')}
+          onGoService={() => setCurrentPage('service')}
         />
+      )}
+
+      {currentPage === 'service' && (
+        <ServicePage />
       )}
     </>
   );
